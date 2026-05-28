@@ -247,3 +247,94 @@ void kd_print(KdTree *tree) {
     printf("Kd-Tree (k = %d):\n", tree->k);
     kd_print_helper(tree->root, tree->k, 0, "", 0);
 }
+
+/*
+Compare 2 points
+*/
+static int points_equal(int k, const double *p1, const double *p2) {
+    for (int i = 0; i < k; i++) {
+        if (p1[i] != p2[i]) return 0;
+    }
+    return 1;
+}
+
+/*
+Find node with minimum value along axis
+*/
+static KdNode* kd_find_min(KdNode *current_node, int target_axis, int depth, int k) {
+    if (current_node == NULL) {
+        return NULL;
+    }
+
+    int current_axis = depth % k;
+    if (current_axis == target_axis) {
+        if (current_node->left == NULL) {
+            return current_node;
+        }
+        return kd_find_min(current_node->left, target_axis, depth + 1, k);
+    }
+
+    KdNode *left_min = kd_find_min(current_node->left, target_axis, depth + 1, k);
+    KdNode *right_min = kd_find_min(current_node->right, target_axis, depth + 1, k);
+
+    KdNode *res = current_node;
+    if (left_min != NULL && left_min->point[target_axis] < res->point[target_axis]) {
+        res = left_min;
+    }
+    if (right_min != NULL && right_min->point[target_axis] < res->point[target_axis]) {
+        res = right_min;
+    }
+    return res;
+}
+
+/*
+Finds and deletes the node recursively
+*/
+static KdNode* kd_delete_helper(KdNode *current_node, int k, const double *point, int depth) {
+    if (current_node == NULL) {
+        return NULL;
+    }
+
+    int axis = depth % k;
+
+    if (points_equal(k, current_node->point, point)) {
+        // if ight subtree exists
+        if (current_node->right != NULL) {
+            KdNode *min_node = kd_find_min(current_node->right, axis, depth + 1, k);
+            memcpy(current_node->point, min_node->point, k * sizeof(double));
+            current_node->right = kd_delete_helper(current_node->right, k, min_node->point, depth + 1);
+        } 
+        // if only left subtree exists
+        else if (current_node->left != NULL) {
+            KdNode *min_node = kd_find_min(current_node->left, axis, depth + 1, k);
+            memcpy(current_node->point, min_node->point, k * sizeof(double));
+            current_node->right = kd_delete_helper(current_node->left, k, min_node->point, depth + 1);
+            current_node->left = NULL; 
+        } 
+        // if leaf node
+        else {
+            free(current_node->point);
+            free(current_node);
+            return NULL;
+        }
+        return current_node;
+    }
+    
+    if (point[axis] < current_node->point[axis]) {
+        current_node->left = kd_delete_helper(current_node->left, k, point, depth + 1);
+    } else {
+        current_node->right = kd_delete_helper(current_node->right, k, point, depth + 1);
+    }
+
+    return current_node;
+}
+
+/*
+Delete point from tree (Public)
+parameters:
+ tree
+ point - coordinate array of the point to remove
+*/
+void kd_delete(KdTree *tree, const double *point) {
+    tree->root = kd_delete_helper(tree->root, tree->k, point, 0);
+}
