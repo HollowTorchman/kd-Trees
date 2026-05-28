@@ -24,5 +24,6 @@ void kd_free(KdTree *tree);
 void kd_insert(KdTree *tree, const double *point);
 KdNode* kd_nearest(KdTree *tree, const double *target);
 void kd_print(KdTree *tree);
+void kd_delete(KdTree *tree, const double *point);
 
 #endif //KD_TREES_H
