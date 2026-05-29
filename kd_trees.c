@@ -201,13 +201,13 @@ KdNode* kd_nearest(KdTree *tree, const double *target) {
     return best_node;
 }
 
-#define ANSI_COLOR_RED     "\x1b[31m"   // Axis 0 (X)
-#define ANSI_COLOR_GREEN   "\x1b[32m"   // Axis 1 (Y)
-#define ANSI_COLOR_YELLOW  "\x1b[33m"   // Axis 2 (Z)
-#define ANSI_COLOR_CYAN    "\x1b[36m"   // Axis 3
-#define ANSI_COLOR_MAGENTA "\x1b[35m"   // High-dimensional fallback
-#define ANSI_COLOR_GRAY    "\x1b[90m"   // Dim color for NULL connections
-#define ANSI_COLOR_RESET   "\x1b[0m"    // Resets color back to default terminal color
+#define ANSI_COLOR_RED     "\x1b[31m"   
+#define ANSI_COLOR_GREEN   "\x1b[32m"   
+#define ANSI_COLOR_YELLOW  "\x1b[33m"   
+#define ANSI_COLOR_CYAN    "\x1b[36m"   
+#define ANSI_COLOR_MAGENTA "\x1b[35m"   
+#define ANSI_COLOR_GRAY    "\x1b[90m"   
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 /*
 Recursively print tree as a directory structure color-coded by axis

@@ -135,8 +135,34 @@ int* dbscan_cluster(const double *points, int num_points, int k, double epsilon,
         assignments[i] = point_states[i].cluster_id;
     }
 
+    printf("Found %d clusters\n", current_cluster_id);
+
     free(point_states);
     kd_free(tree);
 
     return assignments;
+}
+
+void dbscan_export_to_csv(const char* filename, const double* points, 
+                          const int* cluster_labels, int num_points, int k) {
+    FILE* foutput = fopen(filename, "w");
+
+    fprintf(foutput, "id,");
+    for (int i = 0; i < k; i++) {
+        fprintf(foutput, "dim%d,", i);
+    }
+    fprintf(foutput, "cluster_id\n");
+
+    for (int i = 0; i < num_points; i++) {
+        fprintf(foutput, "%d,", i); // ID
+
+        for (int dim = 0; dim < k; dim++) {
+            fprintf(foutput, "%f,", points[i * k + dim]);
+        }
+        
+        fprintf(foutput, "%d\n", cluster_labels[i]);
+    }
+
+    fclose(foutput);
+    printf("Exported to %s\n", filename);
 }

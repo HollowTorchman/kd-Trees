@@ -26,4 +26,7 @@ returns:
 */
 int* dbscan_cluster(const double *points, int num_points, int k, double epsilon, int min_pts);
 
+void dbscan_export_to_csv(const char* filename, const double* points, 
+                          const int* cluster_labels, int num_points, int k);
+
 #endif

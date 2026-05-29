@@ -30,7 +30,7 @@ KdNode* kd_create_node(int k, const double *point, int id);
 void kd_free(KdTree *tree);
 void kd_insert(KdTree *tree, const double *point, int id);
 KdNode* kd_nearest(KdTree *tree, const double *target);
-void kd_print(KdTree *tree);
+    void kd_print(KdTree *tree);
 void kd_delete(KdTree *tree, const double *point);
 KdResultNode* kd_range_search(KdTree *tree, const double *target, double epsilon);
 void kd_free_results(KdResultNode *results);
