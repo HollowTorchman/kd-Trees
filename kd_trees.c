@@ -38,7 +38,7 @@ return:
  node - pointer to created node
  NULL on error
 */
-KdNode* kd_create_node(int k, const double *point) {
+KdNode* kd_create_node(int k, const double *point, int id) {
     KdNode *node = (KdNode*)malloc(sizeof(KdNode));
     if (!node) {
         fprintf(stderr, "Failed to allocate memory");
@@ -52,6 +52,7 @@ KdNode* kd_create_node(int k, const double *point) {
     }
     memcpy(node->point, point, k * sizeof(double));
 
+    node->id = id;
     node->left = NULL;
     node->right = NULL;
 
@@ -91,10 +92,10 @@ recieves:
 outputs:
  new created node
 */
-KdNode* kd_insert_helper(KdNode *current_node, int k, const double* point, int depth) {
+KdNode* kd_insert_helper(KdNode *current_node, int k, const double* point, int id, int depth) {
     // Create new node if empty spot reached
     if (current_node == NULL) {
-        return kd_create_node(k, point);
+        return kd_create_node(k, point, id);
     }
 
     // Splitting axis for depth
@@ -102,10 +103,10 @@ KdNode* kd_insert_helper(KdNode *current_node, int k, const double* point, int d
 
     // Compare coordinates by axis, go left if <=, right otherwise
     if (point[axis] < current_node->point[axis]){
-        current_node->left = kd_insert_helper(current_node->left, k, point, depth + 1); 
+        current_node->left = kd_insert_helper(current_node->left, k, point, id, depth + 1); 
     } 
     else {
-        current_node->right = kd_insert_helper(current_node->right, k, point, depth + 1);
+        current_node->right = kd_insert_helper(current_node->right, k, point, id, depth + 1);
     }
 
     // Return next node for recursion
@@ -118,8 +119,8 @@ parameters:
  tree
  point - coordinate array 
 */
-void kd_insert(KdTree *tree, const double *point) {
-    tree->root = kd_insert_helper(tree->root, tree->k, point, 0);
+void kd_insert(KdTree *tree, const double *point, int id) {
+    tree->root = kd_insert_helper(tree->root, tree->k, point, id, 0);
 }
 
 /*
@@ -200,41 +201,61 @@ KdNode* kd_nearest(KdTree *tree, const double *target) {
     return best_node;
 }
 
+#define ANSI_COLOR_RED     "\x1b[31m"   // Axis 0 (X)
+#define ANSI_COLOR_GREEN   "\x1b[32m"   // Axis 1 (Y)
+#define ANSI_COLOR_YELLOW  "\x1b[33m"   // Axis 2 (Z)
+#define ANSI_COLOR_CYAN    "\x1b[36m"   // Axis 3
+#define ANSI_COLOR_MAGENTA "\x1b[35m"   // High-dimensional fallback
+#define ANSI_COLOR_GRAY    "\x1b[90m"   // Dim color for NULL connections
+#define ANSI_COLOR_RESET   "\x1b[0m"    // Resets color back to default terminal color
+
 /*
-Recursively print tree as a directory structure
+Recursively print tree as a directory structure color-coded by axis
 */
 static void kd_print_helper(KdNode *node, int k, int depth, char *prefix, int is_left) {
     if (node == NULL) {
         return;
     }
 
-
     int axis = depth % k;
     char axis_char = (k <= 3) ? ("XYZ"[axis]) : ('0' + axis);
 
+    const char *axis_color;
+    switch (axis) {
+        case 0:  axis_color = ANSI_COLOR_RED;    break;
+        case 1:  axis_color = ANSI_COLOR_GREEN;  break;
+        case 2:  axis_color = ANSI_COLOR_YELLOW; break;
+        case 3:  axis_color = ANSI_COLOR_CYAN;   break;
+        case 4: axis_color = ANSI_COLOR_GRAY; break;
+        default: axis_color = ANSI_COLOR_MAGENTA; break;
+    }
+
     printf("%s", prefix);
+
+    printf("%s", axis_color);
     printf("%s|--(Axis %c) [", is_left ? "L" : "R", axis_char);
     
     for (int i = 0; i < k; i++) {
         printf("%.2f", node->point[i]);
         if (i < k - 1) printf(", ");
     }
-    printf("]\n");
+
+    printf("]%s\n", ANSI_COLOR_RESET);
 
     char new_prefix[256];
-    snprintf(new_prefix, sizeof(new_prefix), "%s    ", prefix);
+    snprintf(new_prefix, sizeof(new_prefix), "%s|   ", prefix);
 
     if (node->left || node->right) {
         if (node->left) {
             kd_print_helper(node->left, k, depth + 1, new_prefix, 1);
         } else {
-            printf("%s    L|-- [NULL]\n", prefix);
+            printf("%s|%s   L|-- [NULL]%s\n", prefix, ANSI_COLOR_GRAY, ANSI_COLOR_RESET);
         }
         
         if (node->right) {
             kd_print_helper(node->right, k, depth + 1, new_prefix, 0);
         } else {
-            printf("%s    R|-- [NULL]\n", prefix);
+            printf("%s|%s   R|-- [NULL]%s\n", prefix, ANSI_COLOR_GRAY, ANSI_COLOR_RESET);
         }
     }
 }
@@ -302,12 +323,14 @@ static KdNode* kd_delete_helper(KdNode *current_node, int k, const double *point
         if (current_node->right != NULL) {
             KdNode *min_node = kd_find_min(current_node->right, axis, depth + 1, k);
             memcpy(current_node->point, min_node->point, k * sizeof(double));
+            current_node->id = min_node->id;
             current_node->right = kd_delete_helper(current_node->right, k, min_node->point, depth + 1);
         } 
         // if only left subtree exists
         else if (current_node->left != NULL) {
             KdNode *min_node = kd_find_min(current_node->left, axis, depth + 1, k);
             memcpy(current_node->point, min_node->point, k * sizeof(double));
+            current_node->id = min_node->id;
             current_node->right = kd_delete_helper(current_node->left, k, min_node->point, depth + 1);
             current_node->left = NULL; 
         } 
@@ -319,7 +342,7 @@ static KdNode* kd_delete_helper(KdNode *current_node, int k, const double *point
         }
         return current_node;
     }
-    
+
     if (point[axis] < current_node->point[axis]) {
         current_node->left = kd_delete_helper(current_node->left, k, point, depth + 1);
     } else {
@@ -337,4 +360,89 @@ parameters:
 */
 void kd_delete(KdTree *tree, const double *point) {
     tree->root = kd_delete_helper(tree->root, tree->k, point, 0);
+}
+
+
+/*
+Add node to result linked list
+*/
+static void add_result(KdResultNode **head, KdNode *node) {
+    KdResultNode *new_res = (KdResultNode*)malloc(sizeof(KdResultNode));
+    new_res->node = node;
+    new_res->next = *head;
+    *head = new_res;
+}
+
+/*
+Frees result list
+*/
+void kd_free_results(KdResultNode *results) {
+    while (results != NULL) {
+        KdResultNode *temp = results;
+        results = results->next;
+        free(temp);
+    }
+}
+
+/*
+Recursive range search
+parameters:
+ current_node
+ target - target point coordinates
+ epsilon_sq - squared search radius
+*/
+static void kd_range_search_helper(KdNode *current_node, const double *target, double epsilon_sq, 
+                                    int depth, int k, KdResultNode **results) {
+    if (current_node == NULL) {
+        return;
+    }
+
+    // calculate dist^2 from target to current
+    double dist_sq = 0.0;
+    for (int i = 0; i < k; i++) {
+        double diff = target[i] - current_node->point[i];
+        dist_sq += diff * diff;
+    }
+
+    // add to result list if in radius
+    if (dist_sq <= epsilon_sq) {
+        add_result(results, current_node);
+    }
+
+    // navigate tree
+    int axis = depth % k;
+    double plane_dist = target[axis] - current_node->point[axis];
+
+    KdNode *prim_subtree = (plane_dist < 0) ? current_node->left : current_node->right;
+    KdNode *opp_subtree = (plane_dist < 0) ? current_node->right : current_node->left;
+
+    // explore primary subtree
+    kd_range_search_helper(prim_subtree, target, epsilon_sq, depth + 1, k, results);
+
+    double plane_dist_sq = plane_dist * plane_dist;
+    // explore opposite subtree if it's plane intersects epsilon radius
+    if (plane_dist_sq <= epsilon_sq) {
+        kd_range_search_helper(opp_subtree, target, epsilon_sq, depth + 1, k, results);
+    }
+}
+
+/*
+Range Search (Public)
+parameters:
+ tree    - tree wrapper pointer
+ target  - center point of search radius coordinates
+ epsilon - search radius
+returns:
+ results - pointer to head of result linked list
+*/
+KdResultNode* kd_range_search(KdTree *tree, const double *target, double epsilon) {
+    if (tree == NULL || tree->root == NULL || target == NULL || epsilon < 0.0) {
+        return NULL;
+    }
+    
+    KdResultNode *results = NULL;
+    double eps_sq = epsilon * epsilon;
+    
+    kd_range_search_helper(tree->root, target, eps_sq, 0, tree->k, &results);
+    return results;
 }
